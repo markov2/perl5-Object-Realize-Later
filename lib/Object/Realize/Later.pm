@@ -1,26 +1,26 @@
-use strict;
-use warnings;
 
 package Object::Realize::Later;
 
-our $VERSION = '0.12';
 use Carp;
 use Scalar::Util 'weaken';
+
+use warnings;
+use strict;
 no strict 'refs';
 
-=head1 NAME
+=chapter NAME
 
 Object::Realize::Later - Delayed creation of objects
 
-=head1 SYNOPSIS
+=chapter SYNOPSIS
 
-  package MyLazyObject;
+ package MyLazyObject;
 
-  use Object::Realize::Later
-     becomes => 'MyRealObject',
-     realize => 'load';
+ use Object::Realize::Later
+    becomes => 'MyRealObject',
+    realize => 'load';
 
-=head1 DESCRIPTION
+=chapter DESCRIPTION
 
 The C<Object::Realize::Later> class helps with implementing transparent
 on demand realization of object data.  This is related to the tricks
@@ -33,30 +33,373 @@ never (or not yet) used?  In interactive programs, postponed realization
 may boost start-up: the realization of objects is triggered by the
 use, so spread over time.
 
-Now there are two ways to implement lazy behaviour: you may choose to check
+=chapter METHODS
+
+=section Construction
+
+=function use Object::Realize::Later OPTIONS
+
+When you invoke (C<use>) the C<Object::Realize::Later> package, it will
+add a set of methods to your package (see section L</Added to YOUR class>).
+
+=requires becomes CLASS
+Which type will this object become after realization.
+
+=requires realize METHOD|CODE
+How will transform.  If you specify a CODE reference, then this will be
+called with the lazy-object as first argument, and the requested method
+as second.
+
+After realization, you may still have your hands on the lazy object
+on various places.  Be sure that your realization method is coping
+with that, for instance by using L<Memoize>.  See examples below.
+
+=option  source_module CLASS
+=default source_module <becomes>
+if the class (a package) is included in a file (module) with a different
+name, then use this argument to specify the file name. The name is
+expected to be the same as in the C<require> call which would load it.
+
+=option  warn_realization BOOLEAN
+=default warn_realization <false>
+Print a warning message when the realization starts.  This is for
+debugging purposes.
+
+=option  warn_realize_again BOOLEAN
+=default warn_realize_again <false>
+When an object is realized, the original object -which functioned
+as a stub- is reconstructed to work as proxy to the realized object.
+This option will issue a warning when that proxy is used, which means
+that somewhere in your program there is a variable still holding a
+reference to the stub.  This latter is not problematic at all, although
+it slows-down each method call.
+
+=option  believe_caller BOOLEAN
+=default believe_caller <false>
+
+When a method is called on the un-realized object, the AUTOLOAD
+checks whether this resolves the need.  If not, the realization is
+not done.  However, when realization may result in an object that
+extends the functionality of the class specified with C<becomes>,
+this check must be disabled.  In that case, specify true for
+this option.
+
+=section Added to YOUR class
+
+=cut
+
+my $named  = 'ORL_realization_method';
+my $helper = 'ORL_fake_realized';
+
+#-------------------------------------------
+
+=c_method isa CLASS
+
+Is this object a (sub-)class of the specified CLASS or can it become a
+(sub-)class of CLASS.
+
+=examples
+
+ MyLazyObject->isa('MyRealObject')      # true
+ MyLazyObject->isa('SuperClassOfLazy'); # true
+ MyLazyObject->isa('SuperClassOfReal'); # true
+
+ my $lazy = MyLazyObject->new;
+ $lazy->isa('MyRealObject');            # true
+ $lazy->isa('SuperClassOfLazy');        # true
+ $lazy->isa('SuperClassOfReal');        # true
+
+=cut
+
+sub init_code($)
+{   my $args    = shift;
+
+    <<INIT_CODE;
+  package $args->{class};
+  require $args->{source_module};
+
+  my \$$helper = bless {}, '$args->{becomes}';
+INIT_CODE
+}
+
+sub isa_code($)
+{   my $args    = shift;
+
+    <<ISA_CODE;
+  sub isa(\$)
+  {   my (\$thing, \$what) = \@_;
+      return 1 if \$thing->SUPER::isa(\$what);  # real dependency?
+      \$$helper\->isa(\$what);
+  }
+ISA_CODE
+}
+
+#-------------------------------------------
+
+=ci_method can METHOD
+
+Is the specified METHOD available for the lazy or the realized version
+of this object?  It will return the reference to the code.
+
+=examples
+
+   MyLazyObject->can('lazyWork')      # true
+   MyLazyObject->can('realWork')      # true
+
+   my $lazy = MyLazyObject->new;
+   $lazy->can('lazyWork');            # true
+   $lazy->can('realWork');            # true
+
+=cut
+
+sub can_code($)
+{   my $args = shift;
+    my $becomes = $args->{becomes};
+
+    <<CAN_CODE;
+  sub can(\$)
+  {   my (\$thing, \$method) = \@_;
+      my \$func;
+      \$func = \$thing->SUPER::can(\$method)
+         and return \$func;
+
+      \$func = \$$helper\->can(\$method)
+         or return;
+
+      # wrap func() to trigger load if needed.
+      sub { ref \$thing
+            ? \$func->(\$thing->forceRealize, \@_)
+            : \$func->(\$thing, \@_)
+          };
+  }
+CAN_CODE
+}
+
+#-------------------------------------------
+
+=method AUTOLOAD
+
+When a method is called which is not available for the lazy object, the
+AUTOLOAD is called.
+
+=cut
+
+sub AUTOLOAD_code($)
+{   my $args   = shift;
+
+    <<'CODE1' . ($args->{believe_caller} ? '' : <<NOT_BELIEVE) . <<CODE2;
+  our $AUTOLOAD;
+  sub AUTOLOAD(@)
+  {  my $call = substr $AUTOLOAD, rindex($AUTOLOAD, ':')+1;
+     return if $call eq 'DESTROY';
+CODE1
+
+     unless(\$$helper\->can(\$call))
+     {   use Carp;
+         croak "Unknown method \$call called";
+     }
+NOT_BELIEVE
+    # forward as class method if required
+    shift and return $args->{becomes}->\$call( \@_ ) unless ref \$_[0];
+
+     \$_[0]->forceRealize;
+     my \$made = shift;
+     \$made->\$call(@_);
+  }
+CODE2
+}
+
+#-------------------------------------------
+
+=method forceRealize
+
+You can force the load by calling this method on your object.  It returns
+the realized object.
+
+=cut
+
+sub realize_code($)
+{   my $args   = shift;
+    my $pkg    = __PACKAGE__;
+    my $argspck= join "'\n         , '", %$args;
+
+    <<REALIZE_CODE .($args->{warn_realization} ? <<'WARN' : '') .<<REALIZE_CODE;
+  sub forceRealize(\$)
+  {
+REALIZE_CODE
+      require Carp;
+      Carp::carp("Realization of $_[0]");
+WARN
+      ${pkg}->realize
+        ( ref_object => \\\${_[0]}
+        , caller     => [ caller 1 ]
+        , '$argspck'
+        );
+  }
+REALIZE_CODE
+}
+
+#-------------------------------------------
+
+=method willRealize
+
+Returns which class will be the realized to follow-up this class.
+
+=cut
+
+sub will_realize_code($)
+{   my $args = shift;
+    my $becomes = $args->{becomes};
+    <<WILL_CODE;
+sub willRealize() {'$becomes'}
+WILL_CODE
+}
+
+#-------------------------------------------
+
+=section Object::Realize::Later internals
+
+The next methods are not exported to the class where the `use' took
+place.  These methods implement the actual realization.
+
+=c_method realize OPTIONS
+
+This method is called when a C<$object->forceRealize()> takes
+place.  It checks whether the realization has been done already
+(is which case the realized object is returned)
+
+=cut
+
+sub realize(@)
+{   my ($class, %args) = @_;
+    my $object  = ${$args{ref_object}};
+    my $realize = $args{realize};
+
+    my $already = $class->realizationOf($object);
+    if(defined $already && ref $already ne ref $object)
+    {   if($args{warn_realize_again})
+        {   my (undef, $filename, $line) = @{$args{caller}};
+            warn "Attempt to realize object again: old reference caught at $filename line $line.\n"
+        }
+
+        return ${$args{ref_object}} = $already;
+    }
+
+    my $loaded  = ref $realize ? $realize->($object) : $object->$realize;
+
+    warn "Load produces a ".ref($loaded)
+       . " where a $args{becomes} is expected.\n"
+           unless $loaded->isa($args{becomes});
+
+    ${$args{ref_object}} = $loaded;
+    $class->realizationOf($object, $loaded);
+} 
+
+#-------------------------------------------
+
+=c_method realizationOf OBJECT [,REALIZED]
+
+Returns the REALIZED version of OBJECT, optionally after setting it
+first.  When the method returns C<undef>, the realization has not
+yet taken place or the realized object has already been removed again.
+
+=cut
+
+my %realization;
+
+sub realizationOf($;$)
+{   my ($class, $object) = (shift, shift);
+    my $unique = "$object";
+
+    if(@_)
+    {   $realization{$unique} = shift;
+        weaken $realization{$unique};
+    }
+
+    $realization{$unique};
+}
+
+#-------------------------------------------
+
+=c_method import OPTIONS
+
+The OPTIONS used for C<import> are the values after the class name
+with C<use>.  So this routine implements the actual option parsing.
+It generates code dynamically, which is then evaluated in the
+callers name-space.
+
+=cut
+
+sub import(@)
+{   my ($class, %args) = @_;
+
+    confess "Require 'becomes'" unless $args{becomes};
+    confess "Require 'realize'" unless $args{realize};
+
+    $args{class}                = caller;
+    $args{warn_realization}   ||= 0;
+    $args{warn_realize_again} ||= 0;
+    $args{source_module}      ||= $args{becomes};
+
+    # A reference to code will stringify at the eval below.  To solve
+    # this, it is tranformed into a call to a named subroutine.
+    if(ref $args{realize} eq 'CODE')
+    {   my $named_method = "$args{class}::$named";
+        *{$named_method} = $args{realize};
+        $args{realize}   = $named_method;
+    }
+
+    # Produce the code
+
+    my $args = \%args;
+    my $eval
+       = init_code($args)
+       . isa_code($args)
+       . can_code($args)
+       . AUTOLOAD_code($args)
+       . realize_code($args)
+       . will_realize_code($args)
+       ;
+#   warn $eval;   # uncomment for debugging
+
+    # Install the code
+
+    eval $eval;
+    die $@ if $@;
+
+    1;
+}
+
+#-------------------------------------------
+
+=chapter DETAILS
+
+=section About lazy loading
+
+There are two ways to implement lazy behaviour: you may choose to check
 whether you have realized the data in each method which accesses the data,
 or use the autoloading of data trick.
 
-An implementation of the C<first solution> is:
+An implementation of the first solution is:
 
-    sub realize {
-        my $self = shift;
-        return $self unless $self->{_is_realized};
+ sub realize {
+     my $self = shift;
+     return $self unless $self->{_is_realized};
 
-        # read the data from file, or whatever
-        $self->{data} = ....;
+     # read the data from file, or whatever
+     $self->{data} = ....;
 
-        $self->{_is_realized} = 1;
-        $self;
-    }
+     $self->{_is_realized} = 1;
+     $self;
+ }
 
-    sub getData() {
-        my $self = shift;
-        return $self->realize->{data};
-    }
+ sub getData() {
+     my $self = shift;
+     return $self->realize->{data};
+ }
 
 The above implementation is error-prone, where you can easily forget to
-call C<realize>.  The tests cannot cover all ordenings of method-calls to
+call M<realize()>.  The tests cannot cover all ordenings of method-calls to
 detect the mistakes.
 
 The I<second approach> uses autoloading, and is supported by this package.
@@ -68,61 +411,11 @@ to reduce the need for realization.  The stub will also contain some
 information which is required for the creation of the real object.
 
 C<Object::Realize::Later> solves the inheritance problems (especially
-the C<isa()> and C<can()> methods) and supplies the AUTOLOAD method.
+the M<isa()> and M<can()> methods) and supplies the AUTOLOAD method.
 Class methods which are not defined in the stub object are forwarded
 as class methods without realization.
 
-=head1 USE
-
-When you invoke (C<use>) the C<Object::Realize::Later> package, it will
-add a set of methods to your package (see the EXPORTS section below).
-
-Specify the following arguments:
-
-=over 4
-
-=item * becomes =E<gt> CLASS
-
-(required) Which type will this object become after realization.
-
-=item * realize =E<gt> METHOD|CODE
-
-(required) How will transform.  If you specify a CODE-reference, then
-this will be called with the lazy-object as first argument, and the
-requested method as second.
-
-After realization, you may still have your hands on the lazy object
-on various places.  Be sure that your realization method is coping
-with that, for instance by using C<Memoize>.  See examples below.
-
-=item * warn_realization =E<gt> BOOLEAN
-
-Print a warning message when the realization starts.  This is for
-debugging purposes.  By default this is FALSE.
-
-=item * warn_realize_again =E<gt> BOOLEAN
-
-When an object is realized, the original object -which functioned
-as a stub- is reconstructed to work as proxy to the realized object.
-This option (default FALSE) will issue a warning when that proxy
-is used, which means that somewhere in your program there is a
-variable still holding a reference to the stub.  This latter is not
-problematic at all, although it slows-down each method call.
-
-=item * believe_caller =E<gt> BOOLEAN
-
-When a method is called on the un-realized object, the AUTOLOAD
-checks whether this resolves the need.  If not, the realization is
-not done.  However, when realization may result in an object that
-extends the functionality of the class specified with C<becomes>,
-this check must be disabled.  In that case, specify true for
-this option.
-
-=back
-
-See further down in this manual-page about EXAMPLES.
-
-=head1 TRAPS
+=section Traps
 
 Be aware of dangerous traps in the current implementation.  These
 problems appear by having multiple references to the same delayed
@@ -172,307 +465,9 @@ Consider this:
  print $copy->getLabel;         # prints 'original'
  # Now also copy is realized to the same object.
  
-=head1 EXPORTS
+=section Examples
 
-The following methods are added to your package:
-
-=over 4
-
-=cut
-
-my $named  = 'ORL_realization_method';
-my $helper = 'ORL_fake_realized';
-
-#-------------------------------------------
-
-=item isa CLASS
-
-(Class and instance method)  Is this object a (sub-)class of the specified
-CLASS or can it become a (sub-)class of CLASS.
-
-Examples:
-
-   MyLazyObject->isa('MyRealObject')      # true
-   MyLazyObject->isa('SuperClassOfLazy'); # true
-   MyLazyObject->isa('SuperClassOfReal'); # true
-
-   my $lazy = MyLazyObject->new;
-   $lazy->isa('MyRealObject');            # true
-   $lazy->isa('SuperClassOfLazy');        # true
-   $lazy->isa('SuperClassOfReal');        # true
-
-=cut
-
-sub init_code($)
-{   my $args    = shift;
-
-    <<INIT_CODE;
-  package $args->{class};
-  require $args->{becomes};
-
-  my \$$helper = bless {}, '$args->{becomes}';
-INIT_CODE
-}
-
-sub isa_code($)
-{   my $args    = shift;
-
-    <<ISA_CODE;
-  sub isa(\$)
-  {   my (\$thing, \$what) = \@_;
-      return 1 if \$thing->SUPER::isa(\$what);  # real dependency?
-      \$$helper\->isa(\$what);
-  }
-ISA_CODE
-}
-
-#-------------------------------------------
-
-=item can METHOD
-
-(Class and instance method) Is the specified METHOD available for the
-lazy or the realized version of this object?  It will return the reference
-to the code.
-
-Examples:
-
-   MyLazyObject->can('lazyWork')      # true
-   MyLazyObject->can('realWork')      # true
-
-   my $lazy = MyLazyObject->new;
-   $lazy->can('lazyWork');            # true
-   $lazy->can('realWork');            # true
-
-=cut
-
-sub can_code($)
-{   my $args = shift;
-    my $becomes = $args->{becomes};
-
-    <<CAN_CODE;
-  sub can(\$)
-  {   my (\$thing, \$method) = \@_;
-      my \$func;
-      \$func = \$thing->SUPER::can(\$method)
-         and return \$func;
-
-      \$func = \$$helper\->can(\$method)
-         or return;
-
-      # wrap func() to trigger load if needed.
-      sub { ref \$thing
-            ? \$func->(\$thing->forceRealize, \@_)
-            : \$func->(\$thing, \@_)
-          };
-  }
-CAN_CODE
-}
-
-#-------------------------------------------
-
-=item AUTOLOAD
-
-When a method is called which is not available for the lazy object, the
-AUTOLOAD is called.
-
-=cut
-
-sub AUTOLOAD_code($)
-{   my $args   = shift;
-
-    <<'CODE1' . ($args->{believe_caller} ? '' : <<NOT_BELIEVE) . <<CODE2;
-  our $AUTOLOAD;
-  sub AUTOLOAD(@)
-  {  my $call = substr $AUTOLOAD, rindex($AUTOLOAD, ':')+1;
-     return if $call eq 'DESTROY';
-CODE1
-
-     unless(\$$helper\->can(\$call))
-     {   use Carp;
-         croak "Unknown method \$call called";
-     }
-NOT_BELIEVE
-    # forward as class method if required
-    shift and return $args->{becomes}->\$call( \@_ ) unless ref \$_[0];
-
-     \$_[0]->forceRealize;
-     my \$made = shift;
-     \$made->\$call(@_);
-  }
-CODE2
-}
-
-#-------------------------------------------
-
-=item forceRealize
-
-You can force the load by calling this method on your object.  It returns
-the realized object.
-
-=cut
-
-sub realize_code($)
-{   my $args   = shift;
-    my $pkg    = __PACKAGE__;
-    my $argspck= join "'\n         , '", %$args;
-
-    <<REALIZE_CODE .($args->{warn_realization} ? <<'WARN' : '') .<<REALIZE_CODE;
-  sub forceRealize(\$)
-  {
-REALIZE_CODE
-      require Carp;
-      Carp::carp("Realization of $_[0]");
-WARN
-      ${pkg}->realize
-        ( ref_object => \\\${_[0]}
-        , caller     => [ caller 1 ]
-        , '$argspck'
-        );
-  }
-REALIZE_CODE
-}
-
-#-------------------------------------------
-
-=item willRealize
-
-Returns which class will be the realized to follow-up this class.
-
-=cut
-
-sub will_realize_code($)
-{   my $args = shift;
-    my $becomes = $args->{becomes};
-    <<WILL_CODE;
-sub willRealize() {'$becomes'}
-WILL_CODE
-}
-
-#-------------------------------------------
-#
-# NOT EXPORTED
-#
-
-=back
-
-=head1 Own METHODS
-
-The next methods are not exported to the class where the `use' took
-place.  These methods implement the actual realization.
-
-=cut
-
-#-------------------------------------------
-
-=item realize OPTIONS
-
-This method is called when a C<$object->forceRealize()> takes
-place.  It checks whether the realization has been done already
-(is which case the realized object is returned)
-
-=cut
-
-sub realize(@)
-{   my ($class, %args) = @_;
-    my $object  = ${$args{ref_object}};
-    my $realize = $args{realize};
-
-    my $already = $class->realizationOf($object);
-    if(defined $already && ref $already ne ref $object)
-    {   if($args{warn_realize_again})
-        {   my (undef, $filename, $line) = @{$args{caller}};
-            warn "Attempt to realize object again: old reference caught at $filename line $line.\n"
-        }
-
-        return ${$args{ref_object}} = $already;
-    }
-
-    my $loaded  = ref $realize ? $realize->($object) : $object->$realize;
-
-    warn "Load produces a ".ref($loaded)
-       . " where a $args{becomes} is expected.\n"
-           unless $loaded->isa($args{becomes});
-
-    ${$args{ref_object}} = $loaded;
-    $class->realizationOf($object, $loaded);
-} 
-
-#-------------------------------------------
-
-=item realizationOf OBJECT [,REALIZED]
-
-Returns the REALIZED version of OBJECT, optionally after setting it
-first.  When the method returns C<undef>, the realization has not
-yet taken place or the realized object has already been removed again.
-
-=cut
-
-my %realization;
-
-sub realizationOf($;$)
-{   my ($class, $object) = (shift, shift);
-    my $unique = "$object";
-
-    if(@_)
-    {   $realization{$unique} = shift;
-        weaken $realization{$unique};
-    }
-
-    $realization{$unique};
-}
-
-#-------------------------------------------
-
-sub import(@)
-{   my ($class, %args) = @_;
-
-    confess "Require 'becomes'" unless $args{becomes};
-    confess "Require 'realize'" unless $args{realize};
-
-    $args{class}                = caller;
-    $args{warn_realization}   ||= 0;
-    $args{warn_realize_again} ||= 0;
-
-    # A reference to code will stringify at the eval below.  To solve
-    # this, it is tranformed into a call to a named subroutine.
-    if(ref $args{realize} eq 'CODE')
-    {   my $named_method = "$args{class}::$named";
-        *{$named_method} = $args{realize};
-        $args{realize}   = $named_method;
-    }
-
-    # Produce the code
-
-    my $args = \%args;
-    my $eval
-       = init_code($args)
-       . isa_code($args)
-       . can_code($args)
-       . AUTOLOAD_code($args)
-       . realize_code($args)
-       . will_realize_code($args)
-       ;
-#   warn $eval;   # uncomment for debugging
-
-    # Install the code
-
-    eval $eval;
-    die $@ if $@;
-
-    1;
-}
-
-1;
-
-__END__
-
-#-------------------------------------------
-
-=back
-
-=head1 EXAMPLES
-
-=head2 Example 1
+=subsection Example 1
 
 In the first example, we delay-load a message.  On the moment the
 message is defined, we only take the location.  When the data of the
@@ -503,7 +498,7 @@ In the main program:
  my $msg    = Mail::Message::Delayed->new('/home/user/mh/1');
  $msg->body->print;     # this will trigger autoload.
 
-=head2 Example 2
+=subsection Example 2
 
 Your realization may also be done by reblessing.  In that case to change the
 type of your object into a different type which stores the same information.
@@ -532,22 +527,21 @@ There is no danger that the un-realized version of the object is kept
 somewhere: all variable which know about this partical I<deer> see the
 change.
 
-
-=head2 Example 3
+=subsection Example 3
 
 This module is especially usefull for larger projects, which there is
 a need for speed or memory reduction. In this case, you may have an
 extra overview on which objects have been realized (transformed), and
-which not.  This example is taken from the C<Mail::Box> modules:
+which not.  This example is taken from the MailBox modules:
 
-The C<Mail::Box> module tries to boost the access-time to a folder.
+The L<Mail::Box> module tries to boost the access-time to a folder.
 If you only need the messages of the last day, why shall all be read?
-So, C<Mail::Box> only creates an invertory of messages at first.  It
+So, MailBox only creates an invertory of messages at first.  It
 takes the headers of all messages, but leaves the body (content) of
 the message in the file.
 
-In C<Mail::Box>' case, the C<Mail::Message>-object has the choice
-between a number of C<Mail::Message::Body>'s, one of which has only
+In MailBox' case, the L<Mail::Message>-object has the choice
+between a number of L<Mail::Message::Body>'s, one of which has only
 be prepared to read the body when needed.  A code snippet:
 
  package Mail::Message;
@@ -611,10 +605,6 @@ be prepared to read the body when needed.  A code snippet:
  print $message->can('lines'); # true, but no realization
  print $message->lines;        # realizes automatically.
 
-=head1 AUTHOR
-
-Mark Overmeer (F<Mark@Overmeer.net>).
-All rights reserved.  This program is free software; you can redistribute
-it and/or modify it under the same terms as Perl itself.
-
 =cut
+
+1;
