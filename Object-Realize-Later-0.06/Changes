@@ -1,5 +1,13 @@
 Revision history for Perl extension Object::Realize::Later.
 
+0.06 Thu Sep 20 16:54:47 CEST 2001
+
+	* Fixed serious bug in AUTOLOAD: forgot to consume one arg.
+
+0.05 Wed Sep 19 14:22:15 CEST 2001
+
+	* Removed need for Memoize
+
 0.02 Mon Sep 10 14:59:22 CEST 2001
 
 	* Added willRealize() to question what an object will become.

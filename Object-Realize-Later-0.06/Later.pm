@@ -3,7 +3,7 @@ use warnings;
 
 package Object::Realize::Later;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 use Carp;
 use Scalar::Util 'weaken';
 no strict 'refs';
@@ -277,7 +277,9 @@ sub AUTOLOAD_code($)
      {   die "Unknown method \$call called\n";
      }
 
-     \$_[0]->forceRealize->\$call(\@_);
+     \$_[0]->forceRealize;
+     my \$made = shift;
+     \$made->\$call(\@_);
   }
 AUTOLOAD_CODE
 }
