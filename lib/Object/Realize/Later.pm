@@ -204,7 +204,7 @@ NOT_BELIEVE
 
      \$_[0]->forceRealize;
      my \$made = shift;
-     \$made->\$call(@_);
+     \$made->\$call(\@_);
   }
 CODE2
 }

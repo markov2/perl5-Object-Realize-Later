@@ -1,5 +1,9 @@
 Revision history for Perl extension Object::Realize::Later.
 
+version 0.14:
+	* [Slavan Rezic] spotted another buglet which was caused by
+	  a missed escape in generated code.
+
 version 0.13: Tue Jul 29 16:11:18 CEST 2003
 	* Module moved to lib/
 	* Documentation now uses OODoc
