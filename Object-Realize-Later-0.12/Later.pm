@@ -3,7 +3,7 @@ use warnings;
 
 package Object::Realize::Later;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 use Carp;
 use Scalar::Util 'weaken';
 no strict 'refs';
@@ -216,13 +216,12 @@ INIT_CODE
 
 sub isa_code($)
 {   my $args    = shift;
-    my $becomes = $args->{becomes};
 
     <<ISA_CODE;
   sub isa(\$)
   {   my (\$thing, \$what) = \@_;
       return 1 if \$thing->SUPER::isa(\$what);  # real dependency?
-      \$$helper\->isa('$becomes');
+      \$$helper\->isa(\$what);
   }
 ISA_CODE
 }

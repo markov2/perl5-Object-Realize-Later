@@ -10,15 +10,17 @@ use Test;
 use lib 't', '.', 't/testmods', 'testmods';
 use C::D::E;
 
-BEGIN { plan tests => 21 }
+BEGIN { plan tests => 23 }
 
 my $obj = C::D->new;
 ok($obj);
 
 ok($obj->isa('C'));
-ok($obj->isa('C::D::E'));  # Also extentions will be accepted.
+ok(not $obj->isa('C::D::E'));
 ok($obj->isa('A::B'));
 ok($obj->isa('A'));
+
+ok(not $obj->isa('GarbleBlaster'));
 
 ok(C::D::E->isa('C::D::E'));
 ok(C::D::E->isa('C::D'));
@@ -26,6 +28,8 @@ ok(C::D::E->isa('C'));
 ok(C::D->isa('C::D'));
 ok(C::D->isa('C'));
 ok(C->isa('C'));
+
+ok(not C::D->isa('GarbleBlaster'));
 
 ok(C::D::E->isa('A::B'));
 ok(C::D::E->isa('A'));
