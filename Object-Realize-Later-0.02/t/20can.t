@@ -10,7 +10,7 @@ use Test;
 use lib 't', '.', 't/testmods', 'testmods';
 use C::D::E;
 
-BEGIN { plan tests => 21 }
+BEGIN { plan tests => 26 }
 
 my $obj = C::D->new;
 ok($obj);
@@ -38,3 +38,9 @@ ok(not defined A::B->can('c_d'));
 ok(not defined A::B->can('c'));
 ok(not defined A->can('c_d'));
 ok(not defined A->can('c'));
+
+ok(defined C::D->can('willRealize'));
+ok(defined C::D::E->can('willRealize'));
+ok(!defined C->can('willRealize'));
+ok(C::D->willRealize eq 'A::B');
+ok(C::D::E->willRealize eq 'A::B');

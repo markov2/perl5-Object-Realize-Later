@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
 #
-# Test the autoloading()
+# Test the autoloading() where becomes => STRING
 #
 
 use strict;

@@ -1,0 +1,15 @@
+Revision history for Perl extension Object::Realize::Later.
+
+0.02 Mon Sep 10 14:59:22 CEST 2001
+
+	* Added willRealize() to question what an object will become.
+
+	* option `warn' now called `warn_realization'.
+
+	* When 'becomes' specifies code, the reference was stringified.
+	  Fixed and tests added.
+
+0.01 Sun Aug 12 12:00:46 2001
+	- original version; created by h2xs 1.20 with options
+		-AX Object::Realize::Later
+

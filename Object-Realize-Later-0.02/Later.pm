@@ -2,8 +2,9 @@ use strict;
 use warnings;
 
 package Object::Realize::Later;
+use Object::Realize::Proxy;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 use Carp;
 use Scalar::Util;
 no strict 'refs';
@@ -93,17 +94,23 @@ After realization, you may still have your hands on the lazy object
 on various places.  Be sure that your realization method is coping
 with that, for instance by using C<Memoize>.  See examples below.
 
-=item * warn =E<gt> BOOLEAN
+=item * warn_realization =E<gt> BOOLEAN
 
 Print a warning message when the realization starts.  This is for
-debugging purposes.  By default, this will be false.
+debugging purposes.  By default this is FALSE.
+
+=item * warn_use_proxy =E<gt> BOOLEAN
+
+When an object is realized, the original object -which functioned
+as a stub- is reconstructed to work as proxy to the realized object.
+This option (default FALSE) will issue a warning when that proxy
+is used, which means that somewhere in your program there is a
+variable still holding a reference to the stub.  This latter is not
+problematic at all, although it slows-down each method call.
 
 =back
 
 See further down in this manual-page about EXAMPLES.
-
-=cut
-
 
 =head1 EXPORTS
 
@@ -112,6 +119,9 @@ The following methods are added to your package:
 =over 4
 
 =cut
+
+my $named  = 'ORL_realization_method';
+my $helper = 'ORL_fake_realized';
 
 #-------------------------------------------
 
@@ -140,7 +150,7 @@ sub init_code($)
   package $args->{class};
   require $args->{becomes};
 
-  my \$ORL_helper_fake = bless {}, '$args->{becomes}';
+  my \$$helper = bless {}, '$args->{becomes}';
 INIT_CODE
 }
 
@@ -152,7 +162,7 @@ sub isa_code($)
   sub isa(\$)
   {   my (\$thing, \$what) = \@_;
       return 1 if \$thing->SUPER::isa(\$what);  # real dependency?
-      \$ORL_helper_fake->isa('$becomes');
+      \$$helper\->isa('$becomes');
   }
 ISA_CODE
 }
@@ -187,7 +197,7 @@ sub can_code($)
       \$func = \$thing->SUPER::can(\$method)
          and return \$func;
 
-      \$func = \$ORL_helper_fake->can(\$method)
+      \$func = \$$helper\->can(\$method)
          or return;
 
       # wrap func() to trigger load if needed.
@@ -215,6 +225,10 @@ sub AUTOLOAD_code($)
      (my \$call = \$AUTOLOAD) =~ s/.*\:\://;
      return if \$call eq 'DESTROY';
 
+     unless(\$$helper\->can(\$call))
+     {   die "Unknown method \$call called\n";
+     }
+
      forceRealize(\$object)->\$call(\@_);
   }
 AUTOLOAD_CODE
@@ -234,7 +248,7 @@ sub realize_code($)
     my $pkg    = __PACKAGE__;
     my $argspck= join "'\n         , '", %$args;
 
-    <<REALIZE_CODE . ($args->{warn} ? <<'WARN' : '') . <<REALIZE_CODE;
+    <<REALIZE_CODE .($args->{warn_realization} ? <<'WARN' : '') .<<REALIZE_CODE;
   sub forceRealize(\$)
   {
 REALIZE_CODE
@@ -251,7 +265,7 @@ REALIZE_CODE
 # This is the only code which stays in this module.
 sub realize(@)
 {   my ($class, %args) = @_;
-    my $object = ${$args{ref_object}};
+    my $object  = ${$args{ref_object}};
     my $realize = $args{realize};
     my $loaded  = ref $realize ? $realize->($object) : $object->$realize;
 
@@ -264,14 +278,41 @@ sub realize(@)
 
 #-------------------------------------------
 
+=item willRealize
+
+Returns which class will be the realized to follow-up this class.
+
+=cut
+
+sub will_realize_code($)
+{   my $args = shift;
+    my $becomes = $args->{becomes};
+    <<WILL_CODE;
+sub willRealize() {'$becomes'}
+WILL_CODE
+}
+
+#-------------------------------------------
+
 sub import(@)
 {   my ($class, %args) = @_;
 
     confess "Require 'becomes'" unless $args{becomes};
     confess "Require 'realize'" unless $args{realize};
 
-    $args{class}   = caller;
-    $args{warn}  ||= 0;
+    $args{class}              = caller;
+    $args{warn_realization} ||= 0;
+    $args{warn_use_proxy}   ||= 0;
+
+    # A reference to code will stringify at the eval below.  To solve
+    # this, it is tranformed into a call to a named subroutine.
+    if(ref $args{realize} eq 'CODE')
+    {   my $named_method = "$args{class}::$named";
+        *{$named_method} = $args{realize};
+        $args{realize}   = $named_method;
+    }
+
+    # Produce the code
 
     my $args = \%args;
     my $eval
@@ -280,16 +321,17 @@ sub import(@)
        . can_code($args)
        . AUTOLOAD_code($args)
        . realize_code($args)
+       . will_realize_code($args)
        ;
-#   warn $eval;
+#   warn $eval;   # uncomment for debugging
+
+    # Install the code
 
     eval $eval;
     die $@ if $@;
 
     1;
 }
-
-1;
 
 __END__
 
@@ -305,32 +347,32 @@ In the first example, we delay-load a message.  On the moment the
 message is defined, we only take the location.  When the data of the
 message is taken (header or body), the data is autoloaded.
 
-  use Mail::Message::Delayed;
-  use Memoize;
+ use Mail::Message::Delayed;
+ use Memoize;
 
-  use Object::Realize::Later
-    ( becomes => 'Mail::Message::Real'
-    , realize => 'loadMessage'
-    );
+ use Object::Realize::Later
+   ( becomes => 'Mail::Message::Real'
+   , realize => 'loadMessage'
+   );
 
-  sub new($) {
-      my ($class, $file) = @_;
-      bless { filename => $file }, $class;
-  }
+ sub new($) {
+     my ($class, $file) = @_;
+     bless { filename => $file }, $class;
+ }
 
-  sub loadMessage() {
-      my $self = shift;
-      Mail::Message::Real->new($self->{filename});
-  }
-  memorize('loadMessage');
+ sub loadMessage() {
+     my $self = shift;
+     Mail::Message::Real->new($self->{filename});
+ }
+ memorize('loadMessage');
 
 In the main program:
 
-  package main;
-  use Mail::Message::Delayed;
+ package main;
+ use Mail::Message::Delayed;
 
-  my $msg = Mail::Message::Delayed->new('/home/user/mh/1');
-  $msg->body->print;   # this will trigger autoload.
+ my $msg = Mail::Message::Delayed->new('/home/user/mh/1');
+ $msg->body->print;   # this will trigger autoload.
 
 The C<Memoize> module will catch a second call to C<loadMessage> for the
 same message.  Remember that you create a new object, and the old
@@ -344,23 +386,23 @@ Your realization may also be done by reblessing.  In that case to change the
 type of your object into a different type which stores the same information.
 Is that right?  Are you sure?  For simple cases, this may be possible:
 
-  package Alive;
-  use Object::Realize::Later
-       becomes => 'Dead',
-       realize => 'kill';
+ package Alive;
+ use Object::Realize::Later
+      becomes => 'Dead',
+      realize => 'kill';
 
-  sub new()         {my $class = shift; bless {@_}, $class}
-  sub jump()        {print "Jump!\n"}
-  sub showAntlers() {print "Fight!\n"}
-  sub kill()        {bless(shift, 'Dead')}
+ sub new()         {my $class = shift; bless {@_}, $class}
+ sub jump()        {print "Jump!\n"}
+ sub showAntlers() {print "Fight!\n"}
+ sub kill()        {bless(shift, 'Dead')}
 
-  package Dead;
-  sub takeAntlers() {...}
+ package Dead;
+ sub takeAntlers() {...}
 
 In the main program:
 
-  my $deer   = Alive->new(Animal => 'deer');
-  my $trophy = $deer->takeAntlers();
+ my $deer   = Alive->new(Animal => 'deer');
+ my $trophy = $deer->takeAntlers();
 
 In this situation, the object (reference) is not changed but is I<reblessed>.
 There is no danger that the un-realized version of the object is kept
@@ -385,67 +427,70 @@ In C<Mail::Box>' case, the C<Mail::Message>-object has the choice
 between a number of C<Mail::Message::Body>'s, one of which has only
 be prepared to read the body when needed.  A code snippet:
 
-  package Mail::Message;
-  sub new($$)
-  {   my ($class, $head, $body) = @_;
-      bless {head => $head, body => $body}, $class;
-  }
-  sub head()     { shift->{head} }
-  sub body()     { shift->{body} }
+ package Mail::Message;
+ sub new($$)
+ {   my ($class, $head, $body) = @_;
+     bless {head => $head, body => $body}, $class;
+ }
+ sub head()     { shift->{head} }
+ sub body()     { shift->{body} }
 
-  sub loadBody()
-  {   my $self = shift;
-      my $body = $self->body;
+ sub loadBody()
+ {   my $self = shift;
+     my $body = $self->body;
 
-      # Catch re-invocations of the loading.  If anywhere was still
-      # a reference to the old (unrealized) body of this message, we
-      # return the new-one directly.
-      return $body unless $body->can('forceRealize');
+     # Catch re-invocations of the loading.  If anywhere was still
+     # a reference to the old (unrealized) body of this message, we
+     # return the new-one directly.
+     return $body unless $body->can('forceRealize');
 
-      # Load the body (change it to anything which really is of
-      # the promised type, or a sub-class of it.
-      my ($lines, $size) = .......;    # get the data
-      $self->{body} = Mail::Message::Body::Lines->new($lines, $size);
+     # Load the body (change it to anything which really is of
+     # the promised type, or a sub-class of it.
+     my ($lines, $size) = .......;    # get the data
+     $self->{body} = Mail::Message::Body::Lines->new($lines, $size);
 
-      # Return the realized object.
-      return $self->{body};
-  }
-
-
-  package Mail::Message::Body::Lines;
-  use base 'Mail::Message::Body';
-
-  sub new($$)
-  {   my ($class, $lines, $size) = @_;
-      bless { lines => $lines, size => $size }, $class;
-  }
-  sub size()  { shift->{size} }
-  sub lines() { shift->{lines} }
+     # Return the realized object.
+     return $self->{body};
+ }
 
 
-  package Mail::Message::Body::Delayed;
-  use Object::Realize::Later
-      becomes => 'Mail::Message::Body',
-      realize => sub {shift->message->loadBody};
+ package Mail::Message::Body::Lines;
+ use base 'Mail::Message::Body';
 
-  sub new() {
-      my ($class, $message, $size) = @_;
-      bless {message => $message, size => $size}, $class;
-  }
-  sub size() { shift->{size} }
+ sub new($$)
+ {   my ($class, $lines, $size) = @_;
+     bless { lines => $lines, size => $size }, $class;
+ }
+ sub size()  { shift->{size} }
+ sub lines() { shift->{lines} }
 
 
-  package main;
-  use Mail::Message;
-  use Mail::Message::Body::Delayed;
+ package Mail::Message::Body::Delayed;
+ use Object::Realize::Later
+     becomes => 'Mail::Message::Body',
+     realize => sub {shift->message->loadBody};
 
-  my $body    = Mail::Message::Body::Delayed->new(42);
-  my $message = Mail::Message->new($head, $body);
+ sub new() {
+     my ($class, $message, $size) = @_;
+     bless {message => $message, size => $size}, $class;
+ }
+ sub size() { shift->{size} }
 
-  print $message->size;         # will not trigger realization!
-  print $message->can('lines'); # true, but no realization
-  print $message->lines;        # realizes automatically.
 
+ package main;
+ use Mail::Message;
+ use Mail::Message::Body::Delayed;
+
+ my $body    = Mail::Message::Body::Delayed->new(42);
+ my $message = Mail::Message->new($head, $body);
+
+ print $message->size;         # will not trigger realization!
+ print $message->can('lines'); # true, but no realization
+ print $message->lines;        # realizes automatically.
+
+=head1 SEE ALSO
+
+ L<Object::Realize::Proxy>
 
 =head1 AUTHOR
 
