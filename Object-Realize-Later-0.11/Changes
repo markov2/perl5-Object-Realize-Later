@@ -1,5 +1,11 @@
 Revision history for Perl extension Object::Realize::Later.
 
+0.11 Tue Jun 10 11:42:01 CEST 2003
+	* [Bjoern Kriews] made proxying of class methods work as well,
+	  without realization.
+	* [Bjoern Kriews] showed that the method name can be stripped
+	  using substr/rindex much faster than by using a regex
+
 0.10 Thu Dec 12 13:20:33 CET 2002
 	* Multi-Level laziness now works as well!  Problem discover
 	  by [Mark Fowler]

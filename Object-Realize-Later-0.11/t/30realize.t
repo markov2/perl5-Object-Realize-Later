@@ -10,7 +10,7 @@ use Test;
 use lib 't', '.', 't/testmods', 'testmods';
 use C::D::E;
 
-BEGIN { plan tests => 13 }
+BEGIN { plan tests => 15 }
 
 my $warntxt;
 sub catchwarn {$warntxt = "@_"};
@@ -43,3 +43,8 @@ ok(ref $obj eq 'A::B');
 ok(not defined $obj->can('C::D::E'));
 ok(not defined $obj->can('C::D'));
 ok(not defined $obj->can('C'));
+
+# test class methods (simple and proxied)
+ok( C::D->c_d eq 'c_d' );
+ok( C::D->a_b eq 'a_b' );
+

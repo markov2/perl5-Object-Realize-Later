@@ -3,7 +3,7 @@ use warnings;
 
 package Object::Realize::Later;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 use Carp;
 use Scalar::Util 'weaken';
 no strict 'refs';
@@ -69,11 +69,13 @@ information which is required for the creation of the real object.
 
 C<Object::Realize::Later> solves the inheritance problems (especially
 the C<isa()> and C<can()> methods) and supplies the AUTOLOAD method.
+Class methods which are not defined in the stub object are forwarded
+as class methods without realization.
 
 =head1 USE
 
 When you invoke (C<use>) the C<Object::Realize::Later> package, it will
-add set of methods to your package (see the EXPORTS section below).
+add a set of methods to your package (see the EXPORTS section below).
 
 Specify the following arguments:
 
@@ -259,7 +261,10 @@ sub can_code($)
          or return;
 
       # wrap func() to trigger load if needed.
-      sub {\$func->(\$thing->forceRealize, \@_)}
+      sub { ref \$thing
+            ? \$func->(\$thing->forceRealize, \@_)
+            : \$func->(\$thing, \@_)
+          };
   }
 CAN_CODE
 }
@@ -276,10 +281,10 @@ AUTOLOAD is called.
 sub AUTOLOAD_code($)
 {   my $args   = shift;
 
-    <<'CODE1' . ($args->{believe_caller} ? '' : <<NOT_BELIEVE) . <<'CODE2';
+    <<'CODE1' . ($args->{believe_caller} ? '' : <<NOT_BELIEVE) . <<CODE2;
   our $AUTOLOAD;
   sub AUTOLOAD(@)
-  {  (my $call = $AUTOLOAD) =~ s/.*\:\://;
+  {  my $call = substr $AUTOLOAD, rindex($AUTOLOAD, ':')+1;
      return if $call eq 'DESTROY';
 CODE1
 
@@ -288,10 +293,12 @@ CODE1
          croak "Unknown method \$call called";
      }
 NOT_BELIEVE
+    # forward as class method if required
+    shift and return $args->{becomes}->\$call( \@_ ) unless ref \$_[0];
 
-     $_[0]->forceRealize;
-     my $made = shift;
-     $made->$call(@_);
+     \$_[0]->forceRealize;
+     my \$made = shift;
+     \$made->\$call(@_);
   }
 CODE2
 }
