@@ -194,7 +194,7 @@ sub AUTOLOAD_code($)
      return if $call eq 'DESTROY';
 CODE1
 
-     unless(\$$helper\->can(\$call))
+     unless(\$$helper->can(\$call) || \$$helper->can('AUTOLOAD'))
      {   use Carp;
          croak "Unknown method \$call called";
      }
@@ -446,9 +446,9 @@ Consider this:
 
  sub new($)      {my($class,$v)=@_; bless {label=>$v}, $class}
  sub setLabel($) {my $self = shift; $self->{label} = shift}
- sub load()      {my $self = shift; Realize->new($self->{label});
+ sub load()      {$_[0] = Realized->new($_[0]->{label}) }
 
- package Realized;
+ package Realized;  # file Realized.pm or use M<use(source_module)>
  sub new($)      {my($class,$v)=@_; bless {label=>$v}, $class}
  sub setLabel($) {my $self = shift; $self->{label} = shift}
  sub getLabel()  {my $self = shift; $self->{label}}
@@ -457,14 +457,12 @@ Consider this:
  my $original = Delayed->new('original');
  my $copy     = $original;
  print $original->getLabel;     # prints 'original'
+ print ref $original;           # prints 'Realized'
+ print ref $copy;               # prints 'Delayed'
+ $original->setLabel('changed');
+ print $original->getLabel;     # prints 'changed'
  print $copy->getLabel;         # prints 'original'
- # $original gets realized, but $copy is not informed!
 
- print $copy->setLabel('copy'); # prints 'copy'
- print $original->getLabel;     # still prints 'original'
- print $copy->getLabel;         # prints 'original'
- # Now also copy is realized to the same object.
- 
 =section Examples
 
 =subsection Example 1
@@ -473,7 +471,7 @@ In the first example, we delay-load a message.  On the moment the
 message is defined, we only take the location.  When the data of the
 message is taken (header or body), the data is autoloaded.
 
- use Mail::Message::Delayed;
+ package Mail::Message::Delayed;
 
  use Object::Realize::Later
    ( becomes => 'Mail::Message::Real'
@@ -547,7 +545,8 @@ be prepared to read the body when needed.  A code snippet:
  package Mail::Message;
  sub new($$)
  {   my ($class, $head, $body) = @_;
-     bless {head => $head, body => $body}, $class;
+     my $self = bless {head => $head, body => $body}, $class;
+     $body->message($self);          # tell body about the message
  }
  sub head()     { shift->{head} }
  sub body()     { shift->{body} }
@@ -564,7 +563,8 @@ be prepared to read the body when needed.  A code snippet:
      # Load the body (change it to anything which really is of
      # the promised type, or a sub-class of it.
      my ($lines, $size) = .......;    # get the data
-     $self->{body} = Mail::Message::Body::Lines->new($lines, $size);
+     $self->{body} = Mail::Message::Body::Lines
+                          ->new($lines, $size, $self);
 
      # Return the realized object.
      return $self->{body};
@@ -574,25 +574,29 @@ be prepared to read the body when needed.  A code snippet:
  package Mail::Message::Body::Lines;
  use base 'Mail::Message::Body';
 
- sub new($$)
- {   my ($class, $lines, $size) = @_;
-     bless { lines => $lines, size => $size }, $class;
+ sub new($$$)
+ {   my ($class, $lines, $size, $message) = @_;
+     bless { lines => $lines, size => $size
+           , message => $message }, $class;
  }
- sub size()  { shift->{size} }
- sub lines() { shift->{lines} }
-
+ sub size()    { shift->{size} }
+ sub lines()   { shift->{lines} }
+ sub message() { shift->{message);
 
  package Mail::Message::Body::Delayed;
  use Object::Realize::Later
      becomes => 'Mail::Message::Body',
      realize => sub {shift->message->loadBody};
 
- sub new() {
-     my ($class, $message, $size) = @_;
-     bless {message => $message, size => $size}, $class;
+ sub new($)
+ {   my ($class, $size) = @_;
+     bless {size => $size}, $class;
  }
  sub size() { shift->{size} }
-
+ sub message(;$)
+ {   my $self = shift;
+     @_ ? ($self->{message} = shift) : $self->{messages};
+ }
 
  package main;
  use Mail::Message;
@@ -602,7 +606,7 @@ be prepared to read the body when needed.  A code snippet:
  my $message = Mail::Message->new($head, $body);
 
  print $message->size;         # will not trigger realization!
- print $message->can('lines'); # true, but no realization
+ print $message->can('lines'); # true, but no realization yet.
  print $message->lines;        # realizes automatically.
 
 =cut
