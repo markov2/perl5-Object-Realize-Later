@@ -1,5 +1,7 @@
 use ExtUtils::MakeMaker;
 
+require 5.005_57;   # for weaken
+
 WriteMakefile
   ( NAME           => 'Object::Realize::Later'
   , VERSION_FROM   => 'Later.pm'

@@ -3,7 +3,7 @@ use warnings;
 
 package Object::Realize::Later;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 use Carp;
 use Scalar::Util 'weaken';
 no strict 'refs';
@@ -106,6 +106,15 @@ This option (default FALSE) will issue a warning when that proxy
 is used, which means that somewhere in your program there is a
 variable still holding a reference to the stub.  This latter is not
 problematic at all, although it slows-down each method call.
+
+=item * believe_caller =E<gt> BOOLEAN
+
+When a method is called on the un-realized object, the AUTOLOAD
+checks whether this resolves the need.  If not, the realization is
+not done.  However, when realization may result in an object that
+extends the functionality of the class specified with C<becomes>,
+this check must be disabled.  In that case, specify true for
+this option.
 
 =back
 
@@ -267,21 +276,24 @@ AUTOLOAD is called.
 sub AUTOLOAD_code($)
 {   my $args   = shift;
 
-    <<AUTOLOAD_CODE;
-  our \$AUTOLOAD;
-  sub AUTOLOAD(\@)
-  {  (my \$call = \$AUTOLOAD) =~ s/.*\:\://;
-     return if \$call eq 'DESTROY';
+    <<'CODE1' . ($args->{believe_caller} ? '' : <<NOT_BELIEVE) . <<'CODE2';
+  our $AUTOLOAD;
+  sub AUTOLOAD(@)
+  {  (my $call = $AUTOLOAD) =~ s/.*\:\://;
+     return if $call eq 'DESTROY';
+CODE1
 
      unless(\$$helper\->can(\$call))
-     {   die "Unknown method \$call called\n";
+     {   use Carp;
+         croak "Unknown method \$call called";
      }
+NOT_BELIEVE
 
-     \$_[0]->forceRealize;
-     my \$made = shift;
-     \$made->\$call(\@_);
+     $_[0]->forceRealize;
+     my $made = shift;
+     $made->$call(@_);
   }
-AUTOLOAD_CODE
+CODE2
 }
 
 #-------------------------------------------
