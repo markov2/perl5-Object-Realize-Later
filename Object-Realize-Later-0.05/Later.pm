@@ -2,11 +2,10 @@ use strict;
 use warnings;
 
 package Object::Realize::Later;
-use Object::Realize::Proxy;
 
-our $VERSION = '0.03';
+our $VERSION = '0.05';
 use Carp;
-use Scalar::Util;
+use Scalar::Util 'weaken';
 no strict 'refs';
 
 =head1 NAME
@@ -99,7 +98,7 @@ with that, for instance by using C<Memoize>.  See examples below.
 Print a warning message when the realization starts.  This is for
 debugging purposes.  By default this is FALSE.
 
-=item * warn_use_proxy =E<gt> BOOLEAN
+=item * warn_realize_again =E<gt> BOOLEAN
 
 When an object is realized, the original object -which functioned
 as a stub- is reconstructed to work as proxy to the realized object.
@@ -112,6 +111,56 @@ problematic at all, although it slows-down each method call.
 
 See further down in this manual-page about EXAMPLES.
 
+=head1 TRAPS
+
+Be aware of dangerous traps in the current implementation.  These
+problems appear by having multiple references to the same delayed
+object.  Depending on how the realization is implemented, terrible
+things can happen.
+
+The two versions of realization:
+
+=over 4
+
+=item * by reblessing
+
+This is the safe version.  The realized object is the same object as
+the delayed one, but reblessed in a different package.  When multiple
+references to the delayed object exists, they will all be updated
+at the same, because the bless information is stored within the
+refered variable.
+
+=item * by new instance
+
+This is the nicest way of realization, but also quite more dangerous.
+Consider this:
+
+ package Delayed;
+ use Object::Realize::Later
+      becomes => 'Realized',
+      realize => 'load';
+
+ sub new($)      {my($class,$v)=@_; bless {label=>$v}, $class}
+ sub setLabel($) {my $self = shift; $self->{label} = shift}
+ sub load()      {my $self = shift; Realize->new($self->{label});
+
+ package Realized;
+ sub new($)      {my($class,$v)=@_; bless {label=>$v}, $class}
+ sub setLabel($) {my $self = shift; $self->{label} = shift}
+ sub getLabel()  {my $self = shift; $self->{label}}
+
+ package main;
+ my $original = Delayed->new('original');
+ my $copy     = $original;
+ print $original->getLabel;     # prints 'original'
+ print $copy->getLabel;         # prints 'original'
+ # $original gets realized, but $copy is not informed!
+
+ print $copy->setLabel('copy'); # prints 'copy'
+ print $original->getLabel;     # still prints 'original'
+ print $copy->getLabel;         # prints 'original'
+ # Now also copy is realized to the same object.
+ 
 =head1 EXPORTS
 
 The following methods are added to your package:
@@ -221,15 +270,14 @@ sub AUTOLOAD_code($)
     <<AUTOLOAD_CODE;
   our \$AUTOLOAD;
   sub AUTOLOAD(\@)
-  {  my \$object = shift;
-     (my \$call = \$AUTOLOAD) =~ s/.*\:\://;
+  {  (my \$call = \$AUTOLOAD) =~ s/.*\:\://;
      return if \$call eq 'DESTROY';
 
      unless(\$$helper\->can(\$call))
      {   die "Unknown method \$call called\n";
      }
 
-     forceRealize(\$object)->\$call(\@_);
+     \$_[0]->forceRealize->\$call(\@_);
   }
 AUTOLOAD_CODE
 }
@@ -256,25 +304,12 @@ REALIZE_CODE
 WARN
       ${pkg}->realize
         ( ref_object => \\\${_[0]}
+        , caller     => [ caller 1 ]
         , '$argspck'
         );
   }
 REALIZE_CODE
 }
-
-# This is the only code which stays in this module.
-sub realize(@)
-{   my ($class, %args) = @_;
-    my $object  = ${$args{ref_object}};
-    my $realize = $args{realize};
-    my $loaded  = ref $realize ? $realize->($object) : $object->$realize;
-
-    warn "Load produces a ".ref($loaded)
-       . " where a $args{becomes} is expected.\n"
-           unless $loaded->isa($args{becomes});
-
-    $loaded;
-} 
 
 #-------------------------------------------
 
@@ -293,6 +328,78 @@ WILL_CODE
 }
 
 #-------------------------------------------
+#
+# NOT EXPORTED
+#
+
+=back
+
+=head1 Own METHODS
+
+The next methods are not exported to the class where the `use' took
+place.  These methods implement the actual realization.
+
+=cut
+
+#-------------------------------------------
+
+=item realize OPTIONS
+
+This method is called when a C<$object->forceRealize()> takes
+place.  It checks whether the realization has been done already
+(is which case the realized object is returned)
+
+=cut
+
+sub realize(@)
+{   my ($class, %args) = @_;
+    my $object  = ${$args{ref_object}};
+    my $realize = $args{realize};
+
+    if(my $already = $class->realizationOf($object))
+    {   if($args{warn_realize_again})
+        {   my (undef, $filename, $line) = @{$args{caller}};
+            warn "Attempt to realize object again: old reference caught at $filename line $line.\n"
+        }
+
+        return ${$args{ref_object}} = $already;
+    }
+
+    my $loaded  = ref $realize ? $realize->($object) : $object->$realize;
+
+    warn "Load produces a ".ref($loaded)
+       . " where a $args{becomes} is expected.\n"
+           unless $loaded->isa($args{becomes});
+
+    ${$args{ref_object}} = $loaded;
+    $class->realizationOf($object, $loaded);
+} 
+
+#-------------------------------------------
+
+=item realizationOf OBJECT [,REALIZED]
+
+Returns the REALIZED version of OBJECT, optionally after setting it
+first.  When the method returns C<undef>, the realization has not
+yet taken place or the realized object has already been removed again.
+
+=cut
+
+my %realization;
+
+sub realizationOf($;$)
+{   my ($class, $object) = (shift, shift);
+    my $unique = "$object";
+
+    if(@_)
+    {   $realization{$unique} = shift;
+        weaken $realization{$unique};
+    }
+
+    return $realization{$unique};
+}
+
+#-------------------------------------------
 
 sub import(@)
 {   my ($class, %args) = @_;
@@ -300,9 +407,9 @@ sub import(@)
     confess "Require 'becomes'" unless $args{becomes};
     confess "Require 'realize'" unless $args{realize};
 
-    $args{class}              = caller;
-    $args{warn_realization} ||= 0;
-    $args{warn_use_proxy}   ||= 0;
+    $args{class}                = caller;
+    $args{warn_realization}   ||= 0;
+    $args{warn_realize_again} ||= 0;
 
     # A reference to code will stringify at the eval below.  To solve
     # this, it is tranformed into a call to a named subroutine.
@@ -333,6 +440,8 @@ sub import(@)
     1;
 }
 
+1;
+
 __END__
 
 #-------------------------------------------
@@ -348,7 +457,6 @@ message is defined, we only take the location.  When the data of the
 message is taken (header or body), the data is autoloaded.
 
  use Mail::Message::Delayed;
- use Memoize;
 
  use Object::Realize::Later
    ( becomes => 'Mail::Message::Real'
@@ -364,21 +472,14 @@ message is taken (header or body), the data is autoloaded.
      my $self = shift;
      Mail::Message::Real->new($self->{filename});
  }
- memorize('loadMessage');
 
 In the main program:
 
  package main;
  use Mail::Message::Delayed;
 
- my $msg = Mail::Message::Delayed->new('/home/user/mh/1');
- $msg->body->print;   # this will trigger autoload.
-
-The C<Memoize> module will catch a second call to C<loadMessage> for the
-same message.  Remember that you create a new object, and the old
-object may still be laying around.  The C<Memorize> has as disadvantage
-that the created objects will stay in your program for ever.
-
+ my $msg    = Mail::Message::Delayed->new('/home/user/mh/1');
+ $msg->body->print;     # this will trigger autoload.
 
 =head2 Example 2
 

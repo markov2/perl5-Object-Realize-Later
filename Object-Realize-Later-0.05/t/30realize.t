@@ -27,7 +27,7 @@ my $new;
 }
 ok($new);
 ok($warntxt eq "Realization of C::D\n");
-ok(ref $obj eq 'A::B');
+ok(ref $obj eq 'A::B');   # passed new ref back?
 
 $obj = C::D::E->new;
 ok($obj);
