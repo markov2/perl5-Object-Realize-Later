@@ -2,10 +2,10 @@ Changes
 Later.pm
 Makefile.PL
 MANIFEST
-Proxy/ARRAY.pm
-Proxy/HASH.pm
 Proxy.pm
 Proxy/SCALAR.pm
+Proxy/ARRAY.pm
+Proxy/HASH.pm
 t/10isa.t
 t/20can.t
 t/30realize.t

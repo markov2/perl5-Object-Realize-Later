@@ -8,8 +8,7 @@
 use strict;
 use Test;
 
-use lib 't', '.', 't/testmods', 'testmods';
-
+use lib 't', '.';
 use Object::Realize::Proxy::SCALAR;
 
 BEGIN { plan tests => 31 }
@@ -24,7 +23,7 @@ use RealizedArray;
 use RealizedHash;
 
 my $stub      = StubScalar->new;
-my $scalarobj = RealizedScalar->new;
+my $scalarobj = RealizedScalar->new(42);
 
 Object::Realize::Proxy::SCALAR->ORL_proxy_create($stub, $scalarobj);
 ok(ref $stub eq 'Object::Realize::Proxy::SCALAR');

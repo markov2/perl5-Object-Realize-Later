@@ -4,7 +4,7 @@ use warnings;
 package Object::Realize::Later;
 use Object::Realize::Proxy;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 use Carp;
 use Scalar::Util;
 no strict 'refs';

@@ -121,9 +121,71 @@ realized object.
 
 #-------------------------------------------
 
+my %op =
+ ( # Conversions
+   '""' => sub { "${(shift)}" }
+ , '0+' => sub { 0+shift }
+ , bool => sub { shift }
+
+   # Aritmetic
+ , '-'  => sub { (shift) -  (shift) }
+ , '+'  => sub { (shift) +  (shift) }
+ , '*'  => sub { (shift) *  (shift) }
+ , '/'  => sub { (shift) /  (shift) }
+ , '%'  => sub { (shift) %  (shift) }
+ , '**' => sub { (shift) ** (shift) }
+ ,  x   => sub { (shift) x  (shift) }
+ , '.'  => sub { (shift) .  (shift) }
+ , neg  => sub { -(shift) }
+
+   # Logical
+ , '!'  => sub { ! (shift) }
+
+   # Bitwise
+ , '&'  => sub { (shift) & (shift) }
+ , '|'  => sub { (shift) | (shift) }
+ , '~'  => sub { ~ (shift) }
+ , '<<' => sub { (shift) << (shift) }
+ , '>>' => sub { (shift) >> (shift) }
+
+   # Assignment only possible by rewriting
+
+   # Comparison
+ , '==' => sub { (shift) == (shift) }
+ , '<'  => sub { (shift) < (shift) }
+ , '<=' => sub { (shift) <= (shift) }
+ , '>'  => sub { (shift) > (shift) }
+ , '>=' => sub { (shift) >= (shift) }
+ , '!=' => sub { (shift) != (shift) }
+ , '<=>'=> sub { (shift) <=> (shift) }
+ , 'lt' => sub { (shift) lt (shift) }
+ , 'le' => sub { (shift) le (shift) }
+ , 'gt' => sub { (shift) gt (shift) }
+ , 'ge' => sub { (shift) ge (shift) }
+ , 'eq' => sub { (shift) eq (shift) }
+ , 'ne' => sub { (shift) ne (shift) }
+ , 'cmp'=> sub { (shift) cmp (shift) }
+
+   # Mathematical
+ , atan2=> sub { atan2 shift,shift }
+ , cos  => sub { cos (shift) }
+ , sin  => sub { sin (shift) }
+ , exp  => sub { exp (shift) }
+ , abs  => sub { abs (shift) }
+ , log  => sub { log (shift) }
+ , sqrt => sub { sqrt (shift) }
+ );
+
 sub ORL_proxy_operator
-{   croak __PACKAGE__. " does not proxy overloads (yet)";
-    # If anyone can figure-out how to do that...
+{   my ($arg1, $arg2, $swapped, $op) = @_;
+#  warn "ARG1=", ref $arg1, ", $$arg1\n";
+#  warn "ARG2=", (defined $arg2 ? $arg2 : "undef"), "\n";
+#  warn "HOW=", (defined $swapped ? $swapped : "undef"), "\n";
+#  warn "OP=$op\n";
+
+      ! defined $arg2 ? $op{$op}->($$arg1)
+    : $swapped        ? $op{$op}->($arg2, $$arg1)
+    :                   $op{$op}->($$arg1, $arg2);
 }
 
 #-------------------------------------------

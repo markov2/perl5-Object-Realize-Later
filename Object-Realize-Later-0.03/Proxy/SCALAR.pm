@@ -25,6 +25,13 @@ value, of course.
 
 #-------------------------------------------
 
+sub new($)
+{   my ($class, $stub) = @_;
+    bless \$stub, $class;
+}
+
+#-------------------------------------------
+
 sub ORL_proxy_create($$)
 {   my ($class, $stub, $realized) = @_;
     $$stub = $realized;
