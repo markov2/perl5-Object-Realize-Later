@@ -26,7 +26,7 @@ my $new;
     $new = $obj->forceRealize;
 }
 ok($new);
-ok($warntxt eq "Realization of C::D\n");
+ok($warntxt, qr/^Realization of C::D /);
 ok(ref $obj eq 'A::B');   # passed new ref back?
 
 $obj = C::D::E->new;
@@ -37,7 +37,7 @@ undef $warntxt;
     $new = $obj->forceRealize;
 }
 ok($new);
-ok($warntxt eq "Realization of C::D::E\n");
+ok($warntxt, qr/^Realization of C::D::E /);
 ok(ref $obj eq 'A::B');
 
 ok(not defined $obj->can('C::D::E'));

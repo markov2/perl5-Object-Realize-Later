@@ -25,7 +25,7 @@ ok($obj->c   eq 'c'  );
 {   local $SIG{__WARN__} = \&catchwarn;
     ok($obj->a_b eq 'a_b');  # triggers autoload
 }
-ok($warntxt eq "Realization of C::D\n");
+ok($warntxt, qr/^Realization of C::D /);
 ok(ref $obj  eq 'A::B');
 
 
@@ -39,7 +39,7 @@ ok($obj->c     eq 'c'  );
 {   local $SIG{__WARN__} = \&catchwarn;
     ok($obj->a_b eq 'a_b');  # triggers autoload
 }
-ok($warntxt eq "Realization of C::D::E\n");
+ok($warntxt, qr/^Realization of C::D::E /);
 ok(ref $obj  eq 'A::B');
 
 
@@ -51,7 +51,7 @@ $obj = C::D->new;
 {   local $SIG{__WARN__} = \&catchwarn;
     ok($obj->a eq 'a');  # triggers autoload
 }
-ok($warntxt eq "Realization of C::D\n");
+ok($warntxt, qr/^Realization of C::D /);
 ok(ref $obj  eq 'A::B');
 
 
@@ -62,6 +62,6 @@ $obj = C::D::E->new;
 {   local $SIG{__WARN__} = \&catchwarn;
     ok($obj->a eq 'a');  # triggers autoload
 }
-ok($warntxt eq "Realization of C::D::E\n");
+ok($warntxt, qr/^Realization of C::D::E /);
 ok(ref $obj  eq 'A::B');
 

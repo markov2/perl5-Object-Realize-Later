@@ -3,7 +3,7 @@ use warnings;
 
 package Object::Realize::Later;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 use Carp;
 use Scalar::Util 'weaken';
 no strict 'refs';
@@ -314,7 +314,8 @@ sub realize_code($)
   sub forceRealize(\$)
   {
 REALIZE_CODE
-      warn "Realization of $_[0]\n";
+      require Carp;
+      Carp::carp("Realization of $_[0]");
 WARN
       ${pkg}->realize
         ( ref_object => \\\${_[0]}
@@ -602,10 +603,6 @@ be prepared to read the body when needed.  A code snippet:
  print $message->size;         # will not trigger realization!
  print $message->can('lines'); # true, but no realization
  print $message->lines;        # realizes automatically.
-
-=head1 SEE ALSO
-
- L<Object::Realize::Proxy>
 
 =head1 AUTHOR
 
