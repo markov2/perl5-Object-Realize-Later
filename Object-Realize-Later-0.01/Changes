@@ -1,0 +1,6 @@
+Revision history for Perl extension Object::Realize::Later.
+
+0.01  Sun Aug 12 12:00:46 2001
+	- original version; created by h2xs 1.20 with options
+		-AX Object::Realize::Later
+

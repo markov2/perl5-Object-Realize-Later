@@ -1,0 +1,13 @@
+Changes
+Later.pm
+Makefile.PL
+MANIFEST
+t/10isa.t
+t/20can.t
+t/30realize.t
+t/40autoload.t
+t/testmods/A/B.pm
+t/testmods/A.pm
+t/testmods/C/D/E.pm
+t/testmods/C/D.pm
+t/testmods/C.pm
