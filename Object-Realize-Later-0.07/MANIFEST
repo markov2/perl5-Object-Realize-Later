@@ -2,6 +2,7 @@ Changes
 Later.pm
 Makefile.PL
 MANIFEST
+README
 t/10isa.t
 t/20can.t
 t/30realize.t

@@ -3,7 +3,7 @@ use warnings;
 
 package Object::Realize::Later;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 use Carp;
 use Scalar::Util 'weaken';
 no strict 'refs';

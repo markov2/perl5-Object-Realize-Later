@@ -1,5 +1,13 @@
 Revision history for Perl extension Object::Realize::Later.
 
+0.07  Thu Sep 20 17:44:19 CEST 2001
+
+	* Added requirement for Scalar::Util to Makefile.PL
+	  spotted by [Andreas Marcel Riechert]
+
+	* Added README
+	  requested by [Andreas Marcel Riechert]
+
 0.06 Thu Sep 20 16:54:47 CEST 2001
 
 	* Fixed serious bug in AUTOLOAD: forgot to consume one arg.

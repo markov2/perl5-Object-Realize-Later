@@ -1,0 +1,18 @@
+
+==== Object Realize Later
+
+This module helps you implementing delay loading of object-data.  While
+creating a stub-object, Object::Realize::Later simulates you got the
+real data.
+
+The module requires  Scalar::Util  to avoid that it keeps objects
+alive when the program is not needing them anymore.
+
+= TESTS:
+
+10isa.t
+20can.t
+30realize.t
+40autoload.t
+41autoload.t
+50again.t
