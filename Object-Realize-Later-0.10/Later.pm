@@ -3,7 +3,7 @@ use warnings;
 
 package Object::Realize::Later;
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 use Carp;
 use Scalar::Util 'weaken';
 no strict 'refs';
@@ -371,7 +371,8 @@ sub realize(@)
     my $object  = ${$args{ref_object}};
     my $realize = $args{realize};
 
-    if(my $already = $class->realizationOf($object))
+    my $already = $class->realizationOf($object);
+    if(defined $already && ref $already ne ref $object)
     {   if($args{warn_realize_again})
         {   my (undef, $filename, $line) = @{$args{caller}};
             warn "Attempt to realize object again: old reference caught at $filename line $line.\n"
@@ -411,7 +412,7 @@ sub realizationOf($;$)
         weaken $realization{$unique};
     }
 
-    return $realization{$unique};
+    $realization{$unique};
 }
 
 #-------------------------------------------

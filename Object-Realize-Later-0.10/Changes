@@ -1,5 +1,9 @@
 Revision history for Perl extension Object::Realize::Later.
 
+0.10 Thu Dec 12 13:20:33 CET 2002
+	* Multi-Level laziness now works as well!  Problem discover
+	  by [Mark Fowler]
+
 0.09 Sat Nov 16 15:05:04 CET 2002
 
 	* Removed reference to (non-existent) Object::Realize::Proxy
