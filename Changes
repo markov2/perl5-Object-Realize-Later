@@ -1,5 +1,13 @@
 Revision history for Perl extension Object::Realize::Later.
 
+version 0.16: Sun Mar 25 17:10:24 CEST 2007
+
+	* generate pod with OODoc 0.99
+
+	* removed need for version, mkdist, mkdoc
+
+	* removed README.oodoc
+
 version 0.15: Fri Jan  9 11:39:54 CET 2004
 	* [Renat Araslanow] found many mistakes in the docs.
 
