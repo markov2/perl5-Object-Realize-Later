@@ -1,7 +1,6 @@
 Changes
 MANIFEST
 Makefile.PL
-README
 lib/Object/Realize/Later.pm
 t/10isa.t
 t/20can.t
@@ -10,6 +9,7 @@ t/40autoload.t
 t/41autoload.t
 t/50again.t
 t/60module.t
+t/pod.t
 t/testmods/A.pm
 t/testmods/A/B.pm
 t/testmods/C.pm

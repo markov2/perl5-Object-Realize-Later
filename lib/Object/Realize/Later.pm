@@ -91,8 +91,6 @@ this option.
 my $named  = 'ORL_realization_method';
 my $helper = 'ORL_fake_realized';
 
-#-------------------------------------------
-
 =c_method isa CLASS
 
 Is this object a (sub-)class of the specified CLASS or can it become a
@@ -134,8 +132,6 @@ sub isa_code($)
 ISA_CODE
 }
 
-#-------------------------------------------
-
 =ci_method can METHOD
 
 Is the specified METHOD available for the lazy or the realized version
@@ -175,8 +171,6 @@ sub can_code($)
 CAN_CODE
 }
 
-#-------------------------------------------
-
 =method AUTOLOAD
 
 When a method is called which is not available for the lazy object, the
@@ -209,8 +203,6 @@ NOT_BELIEVE
 CODE2
 }
 
-#-------------------------------------------
-
 =method forceRealize
 
 You can force the load by calling this method on your object.  It returns
@@ -239,8 +231,6 @@ WARN
 REALIZE_CODE
 }
 
-#-------------------------------------------
-
 =method willRealize
 
 Returns which class will be the realized to follow-up this class.
@@ -254,8 +244,6 @@ sub will_realize_code($)
 sub willRealize() {'$becomes'}
 WILL_CODE
 }
-
-#-------------------------------------------
 
 =section Object::Realize::Later internals
 
@@ -295,8 +283,6 @@ sub realize(@)
     $class->realizationOf($object, $loaded);
 } 
 
-#-------------------------------------------
-
 =c_method realizationOf OBJECT [,REALIZED]
 
 Returns the REALIZED version of OBJECT, optionally after setting it
@@ -318,8 +304,6 @@ sub realizationOf($;$)
 
     $realization{$unique};
 }
-
-#-------------------------------------------
 
 =c_method import OPTIONS
 
@@ -360,7 +344,7 @@ sub import(@)
        . realize_code($args)
        . will_realize_code($args)
        ;
-#   warn $eval;   # uncomment for debugging
+#warn $eval;
 
     # Install the code
 
@@ -369,8 +353,6 @@ sub import(@)
 
     1;
 }
-
-#-------------------------------------------
 
 =chapter DETAILS
 
@@ -462,6 +444,8 @@ Consider this:
  $original->setLabel('changed');
  print $original->getLabel;     # prints 'changed'
  print $copy->getLabel;         # prints 'original'
+
+=back
 
 =section Examples
 
