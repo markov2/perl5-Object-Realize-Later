@@ -4,8 +4,11 @@ require 5.005_57;   # for weaken
 
 WriteMakefile
   ( NAME      => 'Object::Realize::Later'
-  , VERSION   => '0.17'
-  , PREREQ_PM => { Scalar::Util => 0.0 }
+  , VERSION   => '0.18'
+  , PREREQ_PM =>
+   { Scalar::Util => 0.0
+   , Test::Pod    => 1.00
+   }
   , AUTHOR    => 'Mark Overmeer <perl@overmeer.net>'
   , ABSTRACT  => 'Delayed realization of objects'
   );
