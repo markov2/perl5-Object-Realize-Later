@@ -9,7 +9,6 @@ t/40autoload.t
 t/41autoload.t
 t/50again.t
 t/60module.t
-t/pod.t
 t/testmods/A.pm
 t/testmods/A/B.pm
 t/testmods/C.pm
@@ -19,3 +18,4 @@ t/testmods/C/G.pm
 t/testmods/C/G/H.pm
 t/testmods/I.pm
 t/testmods/J.pm
+xt/99pod.t

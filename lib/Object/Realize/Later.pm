@@ -37,7 +37,7 @@ use, so spread over time.
 
 =section Construction
 
-=function use Object::Realize::Later OPTIONS
+=function use Object::Realize::Later %options
 
 When you invoke (C<use>) the C<Object::Realize::Later> package, it will
 add a set of methods to your package (see section L</Added to YOUR class>).
@@ -91,10 +91,10 @@ this option.
 my $named  = 'ORL_realization_method';
 my $helper = 'ORL_fake_realized';
 
-=c_method isa CLASS
+=c_method isa $class
 
-Is this object a (sub-)class of the specified CLASS or can it become a
-(sub-)class of CLASS.
+Is this object a (sub-)class of the specified $class or can it become a
+(sub-)class of $class.
 
 =examples
 
@@ -132,9 +132,9 @@ sub isa_code($)
 ISA_CODE
 }
 
-=ci_method can METHOD
+=ci_method can $method
 
-Is the specified METHOD available for the lazy or the realized version
+Is the specified $method available for the lazy or the realized version
 of this object?  It will return the reference to the code.
 
 =examples
@@ -250,7 +250,7 @@ WILL_CODE
 The next methods are not exported to the class where the `use' took
 place.  These methods implement the actual realization.
 
-=c_method realize OPTIONS
+=c_method realize %options
 
 This method is called when a C<$object->forceRealize()> takes
 place.  It checks whether the realization has been done already
@@ -283,9 +283,9 @@ sub realize(@)
     $class->realizationOf($object, $loaded);
 } 
 
-=c_method realizationOf OBJECT [,REALIZED]
+=c_method realizationOf $object, [$realized]
 
-Returns the REALIZED version of OBJECT, optionally after setting it
+Returns the $realized version of $object, optionally after setting it
 first.  When the method returns C<undef>, the realization has not
 yet taken place or the realized object has already been removed again.
 
@@ -305,9 +305,9 @@ sub realizationOf($;$)
     $realization{$unique};
 }
 
-=c_method import OPTIONS
+=c_method import %options
 
-The OPTIONS used for C<import> are the values after the class name
+The %options used for C<import> are the values after the class name
 with C<use>.  So this routine implements the actual option parsing.
 It generates code dynamically, which is then evaluated in the
 callers name-space.

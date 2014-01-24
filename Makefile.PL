@@ -1,16 +1,16 @@
 use ExtUtils::MakeMaker;
 
-require 5.005_57;   # for weaken
+require 5.008;
 
 WriteMakefile
   ( NAME      => 'Object::Realize::Later'
-  , VERSION   => '0.18'
+  , VERSION   => '0.19'
   , PREREQ_PM =>
-   { Scalar::Util => 0.0
-   , Test::Pod    => 1.00
-   }
+     { Scalar::Util => 0.0
+     }
   , AUTHOR    => 'Mark Overmeer <perl@overmeer.net>'
   , ABSTRACT  => 'Delayed realization of objects'
+  , LICENSE   => 'perl'
   );
 
 ### used by oodist during production of distribution
@@ -22,12 +22,8 @@ DISTDIR         = ../public_html/orl/source
 LICENSE         = artistic
 
 # for POD
-FIRST_YEAR      = 2001-2004,2007
+FIRST_YEAR      = 2001
 EMAIL           = perl@overmeer.net
 WEBSITE         = http://perl.overmeer.net/orl/
-
-# for HTML
-HTML_OUTPUT     = ../public_html/orl/html
-HTML_DOCROOT    = /orl/html
 
 __POSTAMBLE
