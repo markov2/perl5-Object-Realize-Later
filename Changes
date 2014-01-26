@@ -1,10 +1,14 @@
 Revision history for Perl extension Object::Realize::Later.
 
+version 0.20:
+
 version 0.19: Fri Jan 24 11:09:06 CET 2014
 
 	Improvements:
 	- mv t/99pod.t to xt/ and removed dependency to Test::Pod
 	- changed documentation syntax
+	- minor spell fixes, via Debian
+	  rt.cpan.org#92458 [Salvatore Bonaccorso]
 
 version 0.18: Fri Jun  8 16:12:16 CEST 2007
 

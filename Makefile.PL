@@ -4,7 +4,7 @@ require 5.008;
 
 WriteMakefile
   ( NAME      => 'Object::Realize::Later'
-  , VERSION   => '0.19'
+  , VERSION   => '0.20'
   , PREREQ_PM =>
      { Scalar::Util => 0.0
      }

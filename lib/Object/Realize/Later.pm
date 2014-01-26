@@ -511,7 +511,7 @@ change.
 
 =subsection Example 3
 
-This module is especially usefull for larger projects, which there is
+This module is especially useful for larger projects, which there is
 a need for speed or memory reduction. In this case, you may have an
 extra overview on which objects have been realized (transformed), and
 which not.  This example is taken from the MailBox modules:
