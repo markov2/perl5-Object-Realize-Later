@@ -1,6 +1,7 @@
-Changes
+ChangeLog
 MANIFEST
 Makefile.PL
+README.md
 lib/Object/Realize/Later.pm
 t/10isa.t
 t/20can.t
