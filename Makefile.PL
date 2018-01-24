@@ -8,22 +8,22 @@ WriteMakefile
   , PREREQ_PM =>
      { Scalar::Util => 0.0
      }
-  , AUTHOR    => 'Mark Overmeer'
+  , AUTHOR    => 'Mark Overmeer <markov@cpan.org>'
   , ABSTRACT  => 'Delayed realization of objects'
-  , LICENSE   => 'perl'
+  , LICENSE   => 'perl_5'
 
   , META_MERGE =>
-      { 'meta-spec' => { version => 2 }
-      , resources  =>
-          { repository =>
-              { type => 'git'
-              , url  => 'https://github.com/markov2/perl5-Object-Realize-Later.git'
-              , web  => 'https://github.com/markov2/perl5-Object-Realize-Later'
-              }
-          }
-      , homepage => 'http://perl.overmeer.net/CPAN/'
-      , license  => [ 'http://dev.perl.org/licenses/' ]
-      }
+     { 'meta-spec' => { version => 2 }
+     , resources  =>
+        { repository =>
+           { type => 'git'
+           , url  => 'https://github.com/markov2/perl5-Object-Realize-Later.git'
+           , web  => 'https://github.com/markov2/perl5-Object-Realize-Later'
+           }
+        , homepage => 'http://perl.overmeer.net/CPAN/'
+        , license  => [ 'http://dev.perl.org/licenses/' ]
+        }
+     }
   );
 
 ### used by oodist during production of distribution
