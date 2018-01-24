@@ -20,9 +20,9 @@ WriteMakefile
               , url  => 'https://github.com/markov2/perl5-Object-Realize-Later.git'
               , web  => 'https://github.com/markov2/perl5-Object-Realize-Later'
               }
+            , license  => [ 'http://dev.perl.org/licenses/' ]
           }
       , homepage => 'http://perl.overmeer.net/CPAN/'
-      , license  => [ 'http://dev.perl.org/licenses/' ]
       }
   );
 
