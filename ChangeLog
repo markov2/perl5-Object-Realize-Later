@@ -5,6 +5,9 @@ explicitly stated differently.
 
 version 0.22:
 
+	Changes:
+	- require 5.016 (2012)
+
 	Fixes:
 	- fix metadata [Mohammad S Anwar]
 

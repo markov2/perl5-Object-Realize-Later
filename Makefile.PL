@@ -1,6 +1,6 @@
 use ExtUtils::MakeMaker;
 
-require 5.008;
+require 5.016;
 
 WriteMakefile
   ( NAME      => 'Object::Realize::Later'
