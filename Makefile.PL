@@ -47,12 +47,13 @@ my %oodist   = (
 	],
 );
 
+my %requires = (
+	'Scalar::Util' => 0,
+);
+
 WriteMakefile
 	NAME      => 'Object::Realize::Later',
 	VERSION   => $version,
-	PREREQ_PM => {
-		Scalar::Util => 0.0,
-	},
 	AUTHOR    => 'Mark Overmeer <markov@cpan.org>',
 	ABSTRACT  => 'Delayed realization of objects',
 	LICENSE   => 'perl_5',
@@ -65,20 +66,26 @@ WriteMakefile
 				url  => "$git.git",
 				web  => $git,
 			},
+			bugtracker => {
+				web  => "$git/issues",
+			},
 			homepage => $homepage,
 			license  => [ 'http//dev.perl.org/licenses/' ],
 		},
 		prereqs => {
+			runtime => {
+				requires => \%requires,
+			},
 			develop => {
 				requires => {
 					'OODoc' => '3.00',
-				}
+				},
 			},
 			test => {
 				requires => {
 					'Test::More' => 1.00,
 					'Test::Pod'  => 1.00,
-				}
+				},
 			},
 		},
 
