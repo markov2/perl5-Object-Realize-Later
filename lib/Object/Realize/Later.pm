@@ -43,7 +43,6 @@ use, so spread over time.
 =section Construction
 
 =function use Object::Realize::Later %options
-
 When you invoke (C<use>) the C<Object::Realize::Later> package, it will
 add a set of methods to your package (see section L</Added to YOUR class>).
 
@@ -87,9 +86,10 @@ not done.  However, when realization may result in an object that
 extends the functionality of the class specified with P<becomes>,
 this check must be disabled.  In that case, specify true for
 this option.
+=cut
 
+#------------
 =section Added to YOUR class
-
 =cut
 
 my $named  = 'ORL_realization_method';
@@ -331,8 +331,7 @@ sub import(@)
 		. can_code($args)
 		. AUTOLOAD_code($args)
 		. realize_code($args)
-		. will_realize_code($args)
-		;
+		. will_realize_code($args);
 #warn $eval;
 
 	# Install the code
@@ -519,11 +518,11 @@ be prepared to read the body when needed.  A code snippet:
   package Mail::Message;
   sub new($$)
   {   my ($class, $head, $body) = @_;
-      my $self = bless {head => $head, body => $body}, $class;
+      my $self = bless +{ head => $head, body => $body }, $class;
       $body->message($self);          # tell body about the message
   }
-  sub head()     { shift->{head} }
-  sub body()     { shift->{body} }
+  sub head()     { $_[0]->{head} }
+  sub body()     { $_[0]->{body} }
 
   sub loadBody()
   {   my $self = shift;
@@ -532,13 +531,12 @@ be prepared to read the body when needed.  A code snippet:
       # Catch re-invocations of the loading.  If anywhere was still
       # a reference to the old (unrealized) body of this message, we
       # return the new-one directly.
-      return $body unless $body->can('forceRealize');
+      $body->can('forceRealize') or return $body;
 
       # Load the body (change it to anything which really is of
       # the promised type, or a sub-class of it.
       my ($lines, $size) = .......;    # get the data
-      $self->{body} = Mail::Message::Body::Lines
-                           ->new($lines, $size, $self);
+      $self->{body} = Mail::Message::Body::Lines->new($lines, $size, $self);
 
       # Return the realized object.
       return $self->{body};
@@ -550,12 +548,11 @@ be prepared to read the body when needed.  A code snippet:
 
   sub new($$$)
   {   my ($class, $lines, $size, $message) = @_;
-      bless { lines => $lines, size => $size,
-            message => $message }, $class;
+      bless { lines => $lines, size => $size, message => $message }, $class;
   }
-  sub size()    { shift->{size} }
-  sub lines()   { shift->{lines} }
-  sub message() { shift->{message);
+  sub size()    { $_[0]->{size} }
+  sub lines()   { $_[0]->{lines} }
+  sub message() { $_[0]->{message} };
 
   package Mail::Message::Body::Delayed;
   use Object::Realize::Later
@@ -564,17 +561,17 @@ be prepared to read the body when needed.  A code snippet:
 
   sub new($)
   {   my ($class, $size) = @_;
-      bless {size => $size}, $class;
+      bless +{ size => $size }, $class;
   }
-  sub size() { shift->{size} }
+  sub size() { $_[0]->{size} }
   sub message(;$)
   {   my $self = shift;
       @_ ? ($self->{message} = shift) : $self->{messages};
   }
 
   package main;
-  use Mail::Message;
-  use Mail::Message::Body::Delayed;
+  use Mail::Message ();
+  use Mail::Message::Body::Delayed ();
 
   my $body    = Mail::Message::Body::Delayed->new(42);
   my $message = Mail::Message->new($head, $body);

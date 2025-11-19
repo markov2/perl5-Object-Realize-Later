@@ -38,13 +38,9 @@ my %oodist   = (
 	},
 
 	generate => [ {
-		# Add real pod to the releases
 		format         => 'pod3',
 		podtail        => undef,
-	  },
- 	  # You may add HTML formatters here.
- 		  # You may add exporter configurations here.
-	],
+	}, ],
 );
 
 my %requires = (
