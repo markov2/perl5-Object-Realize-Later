@@ -5,8 +5,9 @@
 
 package Object::Realize::Later;
 
-use Carp;
-use Scalar::Util 'weaken';
+use Log::Report 'object-release-later';
+
+use Scalar::Util qw/weaken/;
 
 use warnings;
 use strict;
@@ -31,6 +32,11 @@ The C<Object::Realize::Later> class helps with implementing transparent
 on demand realization of object data.  This is related to the tricks
 on autoloading of data, the lesser known cousin of autoloading of
 functionality.
+
+This module version 4.0 and up is not fully compatible with older releases:
+mainly the exception handling has changed.  When you need to upgrade, please
+read F<https://https://github.com/markov2/perl5-Mail-Box/wiki/>
+B<Version 3 is still maintained> and may see new releases as well.
 
 On demand realization is all about performance gain.  Why should you
 spent costly time on realizing an object, when the data on the object is
@@ -306,8 +312,8 @@ callers name-space.
 sub import(@)
 {	my ($class, %args) = @_;
 
-	confess "Require 'becomes'" unless $args{becomes};
-	confess "Require 'realize'" unless $args{realize};
+	$args{becomes} or panic "import requires 'becomes'";
+	$args{realize} or panic "import requires 'realize'";
 
 	$args{class}                = caller;
 	$args{warn_realization}   ||= 0;
@@ -337,7 +343,7 @@ sub import(@)
 	# Install the code
 
 	eval $eval;
-	die $@ if $@;
+	panic $@ if $@;
 
 	1;
 }
@@ -415,14 +421,14 @@ Consider this:
        becomes => 'Realized',
        realize => 'load';
 
-  sub new($)      {my($class,$v)=@_; bless {label=>$v}, $class}
-  sub setLabel($) {my $self = shift; $self->{label} = shift}
-  sub load()      {$_[0] = Realized->new($_[0]->{label}) }
+  sub new($)      { my($class,$v)=@_; bless {label=>$v}, $class }
+  sub setLabel($) { my $self = shift; $self->{label} = shift }
+  sub load()      { $_[0] = Realized->new($_[0]->{label}) }
 
   package Realized;  # file Realized.pm or use M<use(source_module)>
-  sub new($)      {my($class,$v)=@_; bless {label=>$v}, $class}
-  sub setLabel($) {my $self = shift; $self->{label} = shift}
-  sub getLabel()  {my $self = shift; $self->{label}}
+  sub new($)      { my($class,$v)=@_; bless {label=>$v}, $class }
+  sub setLabel($) { my $self = shift; $self->{label} = shift }
+  sub getLabel()  { my $self = shift; $self->{label} }
 
   package main;
   my $original = Delayed->new('original');
