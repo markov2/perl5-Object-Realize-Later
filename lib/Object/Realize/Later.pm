@@ -32,6 +32,10 @@ on demand realization of object data.  This is related to the tricks
 on autoloading of data, the lesser known cousin of autoloading of
 functionality.
 
+B<This is a maintenance release for the old interface>.  Read
+F<https://https://github.com/markov2/perl5-Mail-Box/wiki/> how
+to move towards version 4.
+
 On demand realization is all about performance gain.  Why should you
 spent costly time on realizing an object, when the data on the object is
 never (or not yet) used?  In interactive programs, postponed realization
