@@ -33,7 +33,7 @@ on autoloading of data, the lesser known cousin of autoloading of
 functionality.
 
 B<This is a maintenance release for the old interface>.  Read
-F<https://https://github.com/markov2/perl5-Mail-Box/wiki/> how
+F<https://github.com/markov2/perl5-Mail-Box/wiki/> how
 to move towards version 4.
 
 On demand realization is all about performance gain.  Why should you
