@@ -30,7 +30,7 @@ better source is CPAN; to get it installed simply run:
 ```
 
 **Be aware that version 4 is not fully compatible with releases pre-4**
-See <https://https://github.com/markov2/perl5-Mail-Box/wiki/>
+See <https://github.com/markov2/perl5-Mail-Box/wiki/>
 
 ## Development &rarr; Release
 
