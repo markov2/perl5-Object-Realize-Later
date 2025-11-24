@@ -33,9 +33,9 @@ on demand realization of object data.  This is related to the tricks
 on autoloading of data, the lesser known cousin of autoloading of
 functionality.
 
-This module version 4.0 and up is not fully compatible with older releases:
+This module versions 4.0 and up is not fully compatible with older releases:
 mainly the exception handling has changed.  When you need to upgrade, please
-read F<https://https://github.com/markov2/perl5-Mail-Box/wiki/>
+read F<https://github.com/markov2/perl5-Mail-Box/wiki/>
 B<Version 3 is still maintained> and may see new releases as well.
 
 On demand realization is all about performance gain.  Why should you
