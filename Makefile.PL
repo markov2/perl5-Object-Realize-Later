@@ -3,7 +3,7 @@ use ExtUtils::MakeMaker;
 require 5.016;
 
 # Use command 'oodist' to produce your whole software release.
-my $version  = 4.00;
+my $version  = '4.01';
 my $git      = "https://github.com/markov2/perl5-Object-Realize-Later";
 my $publish  = "../public_html/object-realize-later";
 my $homepage = "http://perl.overmeer.net/CPAN/";
