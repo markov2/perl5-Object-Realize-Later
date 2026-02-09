@@ -444,7 +444,7 @@ Consider this:
 
 =section Examples
 
-=subsection Example 1
+=subsection Example 1: Delay loading
 
 In the first example, we delay-load a message.  On the moment the
 message is defined, we only take the location.  When the data of the
@@ -475,7 +475,7 @@ In the main program:
   my $msg    = Mail::Message::Delayed->new('/home/user/mh/1');
   $msg->body->print;     # this will trigger autoload.
 
-=subsection Example 2
+=subsection Example 2: reblessing
 
 Your realization may also be done by reblessing.  In that case to change the
 type of your object into a different type which stores the same information.
@@ -486,10 +486,10 @@ Is that right?  Are you sure?  For simple cases, this may be possible:
        becomes => 'Dead',
        realize => 'kill';
 
-  sub new()         {my $class = shift; bless {@_}, $class}
-  sub jump()        {print "Jump!\n"}
-  sub showAntlers() {print "Fight!\n"}
-  sub kill()        {bless(shift, 'Dead')}
+  sub new()         { my $class = shift; bless {@_}, $class }
+  sub jump()        { print "Jump!\n" }
+  sub showAntlers() { print "Fight!\n" }
+  sub kill()        { bless(shift, 'Dead') }
 
   package Dead;
   sub takeAntlers() {...}
@@ -504,7 +504,7 @@ There is no danger that the un-realized version of the object is kept
 somewhere: all variable which know about this partical I<deer> see the
 change.
 
-=subsection Example 3
+=subsection Example 3: lazy data
 
 This module is especially useful for larger projects, which there is
 a need for speed or memory reduction. In this case, you may have an
@@ -560,6 +560,7 @@ be prepared to read the body when needed.  A code snippet:
   sub lines()   { $_[0]->{lines} }
   sub message() { $_[0]->{message} };
 
+
   package Mail::Message::Body::Delayed;
   use Object::Realize::Later
       becomes => 'Mail::Message::Body',
@@ -574,6 +575,7 @@ be prepared to read the body when needed.  A code snippet:
   {   my $self = shift;
       @_ ? ($self->{message} = shift) : $self->{messages};
   }
+
 
   package main;
   use Mail::Message ();
